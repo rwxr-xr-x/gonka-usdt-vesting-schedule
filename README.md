@@ -82,6 +82,130 @@ make build
 
 Output: `artifacts/gonka_usdt_vesting_schedule.wasm`
 
+# Deploy
+
+### Store WASM code on-chain:
+
+```bash
+./inferenced tx wasm store ./artifacts/gonka_usdt_vesting_schedule.wasm \
+  --from gonka-account-name \
+  --gas auto \
+  --gas-adjustment 1.5 \
+  --fees 200000ngonka \
+  --node http://node1.gonka.ai:8000/chain-rpc/ \
+  --chain-id gonka-mainnet \
+  --keyring-backend file \
+  --home ./.inference
+```
+
+Get TXID from command output, e.g. A072D3F440CD0847E5C6A19C32C95660DBC985BC1BD6E4D631B7AE1A5B2863B6. Will be used in next step.
+
+### Get contract code_id
+
+```bash
+./inferenced query tx A072D3F440CD0847E5C6A19C32C95660DBC985BC1BD6E4D631B7AE1A5B2863B6 \
+  --node http://node1.gonka.ai:8000/chain-rpc/ \
+  --chain-id gonka-mainnet --output json | jq -r '.events[] | select(.type=="store_code") | .attributes[] | select(.key=="code_id") | .value'
+```
+
+Get code_id from command output, e.g. 99. Will be used in next step.
+
+## Instantiate contract with exact governor and beneficiary addresses
+
+```bash
+./inferenced tx wasm instantiate 99 '{"governor":"gonka10d07y265gmmuvt4z0w9aw880jnsr700j2h5m33","beneficiary":"gonka12ss9dh7fj3xxmk23s8aje4hrpqq669u20v3ja6"}' \
+  --label "gonka_usdt_vesting_schedule" \
+  --admin gonka10d07y265gmmuvt4z0w9aw880jnsr700j2h5m33 \
+  --from gonka-account-name \
+  --gas auto \
+  --gas-adjustment 1.5 \
+  --fees 200000ngonka \
+  --node http://node1.gonka.ai:8000/chain-rpc/ \
+  --chain-id gonka-mainnet \
+  --keyring-backend file \
+  --home ./.inference
+```
+
+Governor address **gonka10d07y265gmmuvt4z0w9aw880jnsr700j2h5m33** it is a Gonka Governance Module.
+
+Beneficiary address is the final recipient of the tranches.
+
+Get TXID from command output, e.g. 80543DE28CB6A569FBC99490AB2270655BBC82500B497057CB8E35718620CAF6. Will be used in next step.
+
+## Get contract instance address
+
+```bash
+./inferenced query tx 80543DE28CB6A569FBC99490AB2270655BBC82500B497057CB8E35718620CAF6 \
+  --node http://node1.gonka.ai:8000/chain-rpc/ \
+  --chain-id gonka-mainnet --output json | jq -r '.events[] | select(.type=="instantiate") | .attributes[] | select(.key=="_contract_address") | .value'
+```
+
+Get contract exact instance address, e.g. gonka1yf2f23sqx8fradjn7laqp0twamlhy4sj6vzwmg946ux4awfqaaes9avx7a. Will be used in next steps.
+
+## Verify contract config
+
+```bash
+curl -s "https://node3.gonka.ai//chain-api/cosmwasm/wasm/v1/contract/gonka1yf2f23sqx8fradjn7laqp0twamlhy4sj6vzwmg946ux4awfqaaes9avx7a/smart/$(echo -n '{"config":{}}' | base64)" | jq '.data'
+```
+
+Output:
+```json
+{
+  "governor": "gonka10d07y265gmmuvt4z0w9aw880jnsr700j2h5m33",
+  "beneficiary": "gonka12ss9dh7fj3xxmk23s8aje4hrpqq669u20v3ja6",
+  "frozen": false,
+  "created_at": 1776362125
+}
+```
+
+## Verify tranche amounts, timestamps and finalization
+
+```bash
+./inferenced query wasm contract-state smart gonka1yf2f23sqx8fradjn7laqp0twamlhy4sj6vzwmg946ux4awfqaaes9avx7a '{"all_tranches":{}}' \
+  --node http://node1.gonka.ai:8000/chain-rpc/ \
+  --chain-id gonka-mainnet --output json | jq
+```
+
+Output:
+```json
+{
+  "data": {
+    "tranches": [
+      {
+        "index": 0,
+        "token_amount": "51000000000",
+        "matures_at": 1776362125,
+        "released": false
+      },
+      {
+        "index": 1,
+        "token_amount": "15000000000",
+        "matures_at": 1784138125,
+        "released": false
+      },
+      {
+        "index": 2,
+        "token_amount": "15000000000",
+        "matures_at": 1791914125,
+        "released": false
+      },
+      {
+        "index": 3,
+        "token_amount": "15000000000",
+        "matures_at": 1799690125,
+        "released": false
+      }
+    ]
+  }
+}
+```
+
+## Verify contract balance
+
+```bash
+./inferenced query bank balances gonka1yf2f23sqx8fradjn7laqp0twamlhy4sj6vzwmg946ux4awfqaaes9avx7a --node http://node2.gonka.ai:8000/chain-rpc/
+```
+
 ## Dependencies
 
 - CosmWasm 3.0.x
