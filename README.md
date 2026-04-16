@@ -206,6 +206,24 @@ Output:
 ./inferenced query bank balances gonka1yf2f23sqx8fradjn7laqp0twamlhy4sj6vzwmg946ux4awfqaaes9avx7a --node http://node2.gonka.ai:8000/chain-rpc/
 ```
 
+or
+```bash
+./inferenced query wasm contract-state smart gonka1yf2f23sqx8fradjn7laqp0twamlhy4sj6vzwmg946ux4awfqaaes9avx7a '{"balance":{}}' \
+  --node http://node1.gonka.ai:8000/chain-rpc/ \
+  --chain-id gonka-mainnet --output json | jq
+```
+
+```json
+{
+  "data": {
+    "balance": {
+      "denom": "ibc/115F68FBA220A028C6F6ED08EA0C1A9C8C52798B14FB66E6C89D5D8C06A524D4",
+      "amount": "0"
+    }
+  }
+}
+```
+
 ## Dependencies
 
 - CosmWasm 3.0.x
